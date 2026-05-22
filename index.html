@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>施工日誌時間軸｜發布版</title>
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --card: rgba(255, 255, 255, 0.96);
+      --text: #182230;
+      --muted: #667085;
+      --line: #d7deea;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --border: #e5eaf2;
+      --soft-blue: #eef5ff;
+      --soft-green: #ecfdf3;
+      --soft-amber: #fffaeb;
+      --shadow: 0 10px 26px rgba(16, 24, 40, 0.07);
+      --shadow-soft: 0 4px 14px rgba(16, 24, 40, 0.05);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, .13), transparent 280px),
+        linear-gradient(180deg, #f2f6ff 0%, var(--bg) 300px);
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .app {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 18px 92px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 5px;
+      font-size: clamp(20px, 2.6vw, 26px);
+      letter-spacing: -0.035em;
+      line-height: 1.2;
+      color: #101828;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0;
+      font-size: 12px;
+    }
+
+    .breadcrumb {
+      color: #667085;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 7px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .status-pill {
+      background: rgba(255, 255, 255, .84);
+      border: 1px solid rgba(37, 99, 235, 0.14);
+      box-shadow: var(--shadow-soft);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--primary-dark);
+      white-space: nowrap;
+      font-weight: 700;
+      font-size: 11px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      backdrop-filter: blur(10px);
+    }
+
+    .list-toolbar {
+      display: grid;
+      grid-template-columns: 1fr 170px;
+      gap: 9px;
+      padding: 12px;
+      margin-bottom: 13px;
+    }
+
+    .site-list { display: grid; gap: 10px; }
+
+    .site-card {
+      position: relative;
+      background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(255,255,255,.92));
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 16px;
+      box-shadow: var(--shadow-soft);
+      padding: 13px;
+      cursor: pointer;
+      transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+    }
+
+    .site-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(37, 99, 235, .32);
+      box-shadow: 0 12px 24px rgba(16, 24, 40, .08);
+    }
+
+    .site-card-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .site-delete-btn {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #fff1f2;
+      color: var(--danger);
+      border: 1px solid #fecdd3;
+      font-size: 10px;
+      box-shadow: none;
+    }
+
+    .site-delete-btn:hover { background: #ffe4e6; }
+
+    .site-main {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .site-main h2 { margin: 7px 0 3px; font-size: 14px; letter-spacing: -0.01em; }
+    .site-main p { margin: 0; color: var(--muted); font-size: 11px; }
+    .site-main strong { white-space: nowrap; color: var(--primary-dark); font-size: 12px; }
+
+    .site-status {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 7px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+
+    .site-status.doing { background: #ecfdf5; color: #047857; }
+    .site-status.pending { background: #f3f4f6; color: #4b5563; }
+    .site-status.check { background: #eff6ff; color: #1d4ed8; }
+    .site-status.done { background: #f0fdf4; color: #166534; }
+
+    .site-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: #475467;
+      font-size: 11px;
+    }
+
+    .site-meta span {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 8px;
+    }
+
+    .active-site { border-color: rgba(37, 99, 235, .35); }
+
+    .project-overview {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 9px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .project-overview div {
+      background: linear-gradient(180deg, #f9fbff, #f6f8fb);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 10px;
+    }
+
+    .project-overview span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .project-overview strong {
+      display: block;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .project-overview small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .form-card {
+      padding: 16px;
+      position: sticky;
+      top: 14px;
+    }
+
+    .section-title { margin: 0 0 10px; font-size: 15px; letter-spacing: -0.01em; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      color: #344054;
+      font-weight: 700;
+      margin: 12px 0 6px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid #d7deea;
+      border-radius: 10px;
+      padding: 8px 9px;
+      font-size: 12px;
+      outline: none;
+      background: rgba(255,255,255,.94);
+      color: #182230;
+      font-family: inherit;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    textarea { min-height: 128px; resize: vertical; line-height: 1.58; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 13px; }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform .12s ease, opacity .12s ease, background .12s ease, box-shadow .12s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    .primary { background: linear-gradient(135deg, var(--primary), #3b82f6); color: #fff; box-shadow: 0 8px 18px rgba(37, 99, 235, .18); }
+    .primary:hover { background: linear-gradient(135deg, var(--primary-dark), #2563eb); }
+    .secondary { background: #eef2f7; color: #182230; }
+    .danger { background: #fff1f2; color: var(--danger); }
+    .voice { background: #eef2ff; color: #3730a3; }
+    .voice.recording { background: #fee2e2; color: #991b1b; animation: pulse 1.2s infinite; }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, .32); }
+      70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+
+    .hint { font-size: 11px; color: var(--muted); line-height: 1.5; margin: 7px 0 0; }
+
+    .photo-uploader {
+      border: 1px dashed #cbd5e1;
+      border-radius: 13px;
+      background: linear-gradient(180deg, #fbfdff, #f8fafc);
+      padding: 12px;
+    }
+
+    .photo-uploader input[type="file"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .photo-picker-top {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+
+    .photo-picker-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 36px;
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--primary), #3b82f6);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(37, 99, 235, .16);
+      user-select: none;
+    }
+
+    .photo-picker-btn:hover { background: linear-gradient(135deg, var(--primary-dark), #2563eb); }
+
+    .photo-picker-meta {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .photo-preview,
+    .entry-photos {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+      margin-top: 9px;
+    }
+
+    .photo-item {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #fff;
+      aspect-ratio: 1 / 1;
+    }
+
+    .photo-item img,
+    .photo-item video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .media-badge {
+      position: absolute;
+      left: 6px;
+      bottom: 6px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 7px;
+      background: rgba(17, 24, 39, .72);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .photo-remove {
+      position: absolute;
+      right: 4px;
+      top: 4px;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(17, 24, 39, .72);
+      color: #fff;
+      font-size: 12px;
+      line-height: 22px;
+    }
+
+    .photo-select {
+      position: absolute;
+      left: 5px;
+      top: 5px;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      z-index: 2;
+    }
+
+    .photo-download-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 7px;
+      margin: -3px 0 10px;
+    }
+
+    .photo-download-actions button {
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+
+    .entry-photos { grid-template-columns: repeat(4, minmax(60px, 1fr)); margin: 9px 0 10px; }
+    .photo-count { color: var(--muted); font-size: 11px; margin-top: 6px; }
+
+    .toolbar {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 1.2fr .8fr auto auto;
+      gap: 9px;
+      align-items: center;
+      margin-bottom: 13px;
+    }
+
+    .timeline-card { padding: 14px 14px 6px; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 13px; }
+
+    .metric {
+      background: linear-gradient(180deg, #f9fbff, #f6f8fb);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 10px;
+    }
+
+    .metric strong { display: block; font-size: 16px; margin-bottom: 1px; letter-spacing: -0.02em; }
+    .metric span { color: var(--muted); font-size: 11px; }
+
+    .timeline { position: relative; padding-left: 24px; min-height: 120px; }
+    .timeline::before { content: ""; position: absolute; left: 9px; top: 8px; bottom: 16px; width: 2px; background: linear-gradient(180deg, #93c5fd, var(--line)); }
+    .entry { position: relative; padding: 0 0 14px 16px; }
+    .entry::before { content: ""; position: absolute; left: -21px; top: 7px; width: 12px; height: 12px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #60a5fa); border: 3px solid #fff; box-shadow: 0 0 0 2px rgba(37, 99, 235, .18); }
+
+    .entry-box {
+      background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(255,255,255,.94));
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 12px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .entry-head { display: flex; justify-content: space-between; gap: 10px; align-items: start; margin-bottom: 7px; }
+    .entry-title { margin: 0; font-size: 13px; letter-spacing: -0.01em; }
+    .entry-time { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .badge-row { display: flex; gap: 5px; flex-wrap: wrap; margin: 7px 0; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      background: #f2f4f7;
+      color: #344054;
+    }
+
+    .badge.weather { background: #eff6ff; color: #1d4ed8; }
+    .badge.people { background: #ecfdf5; color: #047857; }
+    .badge.progress { background: #fffbeb; color: #b45309; }
+
+    .entry-content {
+      white-space: pre-wrap;
+      line-height: 1.55;
+      font-size: 12px;
+      color: #344054;
+      margin: 8px 0 10px;
+    }
+
+    .entry-actions { display: flex; gap: 7px; justify-content: flex-end; }
+    .entry-actions button { padding: 5px 8px; font-size: 11px; }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 28px 18px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 14px;
+      font-size: 12px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #111827;
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 13px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px);
+      transition: all .18s ease;
+      z-index: 80;
+      font-size: 12px;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .mobile-bottom-bar {
+      display: none;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 70;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(255, 255, 255, .94);
+      backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -10px 30px rgba(15, 23, 42, .08);
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .mobile-bottom-bar button { display: flex; align-items: center; justify-content: center; min-height: 38px; font-size: 12px; }
+    .quick-add { display: none; width: 100%; margin-bottom: 12px; }
+    .mobile-only { display: none; }
+
+    .preview-toggle {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 100;
+      background: #111827;
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .22);
+    }
+
+    body.mobile-preview-mode {
+      background: #111827;
+      min-height: 100vh;
+      padding: 18px 0;
+    }
+
+    body.mobile-preview-mode::before {
+      content: "手機版預覽 390px";
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      z-index: 1;
+    }
+
+    body.mobile-preview-mode .app {
+      max-width: 390px;
+      height: 844px;
+      overflow-y: auto;
+      margin: 28px auto 0;
+      padding: 16px 11px 92px;
+      border-radius: 38px;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, .13), transparent 240px),
+        linear-gradient(180deg, #f2f6ff 0%, var(--bg) 260px);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .38);
+      border: 10px solid #020617;
+      scrollbar-width: thin;
+    }
+
+    body.mobile-preview-mode .app::before {
+      content: "";
+      position: sticky;
+      top: -8px;
+      display: block;
+      width: 110px;
+      height: 20px;
+      margin: -6px auto 10px;
+      border-radius: 0 0 18px 18px;
+      background: #020617;
+      z-index: 20;
+    }
+
+    body.mobile-preview-mode header { flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    body.mobile-preview-mode h1 { font-size: 18px; }
+    body.mobile-preview-mode .subtitle { font-size: 11px; }
+    body.mobile-preview-mode .breadcrumb { font-size: 10px; }
+    body.mobile-preview-mode .list-toolbar,
+    body.mobile-preview-mode .toolbar { grid-template-columns: 1fr; padding: 10px; }
+    body.mobile-preview-mode .site-main { flex-direction: column; gap: 9px; }
+    body.mobile-preview-mode .site-card-actions { width: 100%; justify-content: space-between; }
+    body.mobile-preview-mode .site-main strong { white-space: normal; }
+    body.mobile-preview-mode .site-card { padding: 12px; }
+    body.mobile-preview-mode .site-meta { gap: 5px; }
+    body.mobile-preview-mode .site-meta span { border-radius: 10px; width: 100%; }
+    body.mobile-preview-mode .header-actions { justify-content: flex-start; width: 100%; }
+    body.mobile-preview-mode .header-actions button,
+    body.mobile-preview-mode .header-actions .status-pill { flex: 1; text-align: center; }
+    body.mobile-preview-mode .project-overview { grid-template-columns: 1fr 1fr; padding: 10px; gap: 7px; }
+    body.mobile-preview-mode .project-overview div { padding: 9px; }
+    body.mobile-preview-mode .project-overview span { font-size: 10px; }
+    body.mobile-preview-mode .project-overview strong { font-size: 11px; }
+    body.mobile-preview-mode .grid { grid-template-columns: 1fr; gap: 11px; }
+    body.mobile-preview-mode .form-card { position: static; padding: 14px; }
+    body.mobile-preview-mode .row { grid-template-columns: 1fr; gap: 0; }
+    body.mobile-preview-mode input,
+    body.mobile-preview-mode textarea,
+    body.mobile-preview-mode select { font-size: 14px; padding: 9px 10px; }
+    body.mobile-preview-mode textarea { min-height: 108px; }
+    body.mobile-preview-mode .summary { grid-template-columns: repeat(2, 1fr); gap: 7px; }
+    body.mobile-preview-mode .timeline-card { padding: 12px 10px 4px; }
+    body.mobile-preview-mode .timeline { padding-left: 17px; }
+    body.mobile-preview-mode .timeline::before { left: 6px; }
+    body.mobile-preview-mode .entry { padding-left: 11px; }
+    body.mobile-preview-mode .entry::before { left: -17px; width: 11px; height: 11px; }
+    body.mobile-preview-mode .entry-head { flex-direction: column; gap: 3px; }
+    body.mobile-preview-mode .entry-time { white-space: normal; }
+    body.mobile-preview-mode .entry-photos,
+    body.mobile-preview-mode .photo-preview { grid-template-columns: repeat(3, 1fr); }
+    body.mobile-preview-mode .btn-row { display: grid; grid-template-columns: 1fr 1fr; }
+    body.mobile-preview-mode .btn-row button { min-height: 38px; }
+    body.mobile-preview-mode .quick-add,
+    body.mobile-preview-mode .mobile-only { display: block; }
+    body.mobile-preview-mode .mobile-bottom-bar {
+      left: 50%;
+      right: auto;
+      bottom: 28px;
+      width: 370px;
+      transform: translateX(-50%);
+      border-radius: 22px;
+      border: 1px solid var(--border);
+    }
+    body.mobile-preview-mode .toast {
+      left: 50%;
+      right: auto;
+      bottom: 96px;
+      width: 340px;
+      text-align: center;
+      transform: translateX(-50%) translateY(8px);
+    }
+    body.mobile-preview-mode .toast.show { transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 900px) {
+      .app { padding: 16px 11px 92px; }
+      header { flex-direction: column; gap: 10px; margin-bottom: 12px; }
+      h1 { font-size: 18px; }
+      .subtitle { font-size: 11px; }
+      .list-toolbar { grid-template-columns: 1fr; }
+      .site-main { flex-direction: column; gap: 9px; }
+      .site-card-actions { width: 100%; justify-content: space-between; }
+      .site-main strong { white-space: normal; }
+      .site-card { padding: 12px; }
+      .header-actions { justify-content: flex-start; width: 100%; }
+      .header-actions button, .header-actions .status-pill { flex: 1; text-align: center; }
+      .project-overview { grid-template-columns: repeat(2, 1fr); padding: 10px; gap: 7px; }
+      .project-overview div { padding: 9px; }
+      .project-overview span { font-size: 10px; }
+      .project-overview strong { font-size: 11px; }
+      .grid { grid-template-columns: 1fr; gap: 11px; }
+      .form-card { position: static; padding: 14px; }
+      .toolbar { grid-template-columns: 1fr 1fr; padding: 10px; }
+      .toolbar input { grid-column: 1 / -1; }
+      .summary { grid-template-columns: repeat(2, 1fr); gap: 7px; }
+      .timeline-card { padding: 12px 10px 4px; }
+      .timeline { padding-left: 17px; }
+      .timeline::before { left: 6px; }
+      .entry { padding-left: 11px; }
+      .entry::before { left: -17px; width: 11px; height: 11px; }
+      .entry-head { flex-direction: column; gap: 3px; }
+      .entry-time { white-space: normal; }
+      .entry-photos, .photo-preview { grid-template-columns: repeat(3, 1fr); }
+      .photo-picker-top { align-items: stretch; }
+      .photo-picker-btn { flex: 1; min-height: 40px; }
+      .btn-row { display: grid; grid-template-columns: 1fr 1fr; }
+      .btn-row button { min-height: 38px; }
+      .mobile-bottom-bar { display: grid; }
+      .quick-add { display: block; }
+      .mobile-only { display: block; }
+      .toast { left: 12px; right: 12px; bottom: 78px; text-align: center; }
+    }
+
+    @media (max-width: 520px) {
+      .app { padding: 13px 10px 92px; }
+      .breadcrumb { font-size: 10px; }
+      h1 { font-size: 18px; }
+      .project-overview { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr; gap: 0; }
+      input, textarea, select { font-size: 14px; padding: 9px 10px; }
+      button { padding: 9px 10px; }
+      textarea { min-height: 108px; }
+      .toolbar { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: repeat(2, 1fr); }
+      .metric { padding: 9px; }
+      .entry-box { padding: 11px; border-radius: 14px; }
+      .site-meta { gap: 5px; }
+      .site-meta span { border-radius: 10px; width: 100%; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .form-card, .toolbar, .entry-actions, .status-pill, .preview-toggle, .mobile-bottom-bar { display: none !important; }
+      .grid { display: block; }
+      .card { box-shadow: none; border: 0; }
+      .app { max-width: none; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app" id="listPage">
+    <header>
+      <div>
+        <div class="breadcrumb">首頁 / 案場管理</div>
+        <h1>案場列表</h1>
+        <p class="subtitle">新增案場後會留在案場列表；點選案場卡片後進入施工日誌時間軸。</p>
+      </div>
+      <div class="header-actions">
+        <button class="primary" type="button" onclick="createSite()">＋ 新增案場</button>
+      </div>
+    </header>
+
+    <section class="card list-toolbar">
+      <input id="siteSearch" placeholder="搜尋案場名稱、地號、位置..." />
+      <select id="siteStatusFilter">
+        <option>全部狀態</option>
+        <option>施工中</option>
+        <option>待施工</option>
+        <option>驗收中</option>
+        <option>已完成</option>
+      </select>
+    </section>
+
+    <section class="site-list" id="siteList"></section>
+  </div>
+
+  <div class="app" id="projectPage" style="display:none;">
+    <header>
+      <div>
+        <div class="breadcrumb" id="projectBreadcrumb">首頁 / 案場管理 / 林子段741地號 / 施工日誌</div>
+        <h1 id="projectTitle">林子段741地號｜施工日誌</h1>
+        <p class="subtitle">支援打字、語音輸入、最多 12 個照片 / 影片檔案與選取下載，依日期時間自動建立施工紀錄時間軸。</p>
+      </div>
+      <div class="header-actions">
+        <button class="secondary" type="button" onclick="openListPage()">← 返回案場列表</button>
+        <div class="status-pill" id="saveStatus">發布版｜本機儲存</div>
+      </div>
+    </header>
+
+    <section class="project-overview card">
+      <div><span>案場狀態</span><strong id="overviewStatus">施工中</strong></div>
+      <div><span>目前階段</span><strong id="overviewStage">鋼構 / 機電</strong><small id="overviewStageTime">最後更新：-</small></div>
+      <div><span>位置</span><strong id="overviewLocation">雲林縣斗六鎮林子段741地號</strong></div>
+      <div><span>內頁功能</span><strong>日誌、照片、待辦、匯出</strong></div>
+    </section>
+
+    <main class="grid">
+      <section class="card form-card">
+        <h2 class="section-title" id="formTitle">新增施工日誌</h2>
+        <input type="hidden" id="editingId" />
+
+        <label for="project">工程名稱</label>
+        <input id="project" value="林子段741地號菇寮工程" placeholder="例如：林子段741地號菇寮工程" />
+
+        <label for="siteStatus">案場狀態</label>
+        <select id="siteStatus">
+          <option>待施工</option>
+          <option>施工中</option>
+          <option>驗收中</option>
+          <option>已完成</option>
+        </select>
+        <p class="hint" id="siteStatusHint">若施工階段儲存為「掛表」，案場狀態會自動改為「已完成」。</p>
+
+        <div class="row">
+          <div>
+            <label for="date">日期</label>
+            <input id="date" type="date" />
+          </div>
+          <div>
+            <label for="time">時間</label>
+            <input id="time" type="time" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="weather">天氣</label>
+            <select id="weather">
+              <option value="未填">未填</option>
+              <option>晴</option>
+              <option>陰</option>
+              <option>雨</option>
+              <option>雷雨</option>
+              <option>強風</option>
+            </select>
+          </div>
+          <div>
+            <label for="workers">人員 / 工班</label>
+            <input id="workers" placeholder="例如：鐵工3人、吊車1台" />
+          </div>
+        </div>
+
+        <label for="progress">施工階段</label>
+        <select id="progress">
+          <option>一般紀錄</option>
+          <option>進料</option>
+          <option>放樣</option>
+          <option>基礎</option>
+          <option>鋼構</option>
+          <option>浪板</option>
+          <option>模組</option>
+          <option>機電</option>
+          <option>報竣</option>
+          <option>掛表</option>
+          <option>異常 / 待處理</option>
+        </select>
+
+        <label for="content">施工內容</label>
+        <textarea id="content" placeholder="可直接打字，也可以按語音輸入後開始講話。&#10;例如：今日完成A棟柱位放樣，B棟右側偏心位置需再確認，現場材料已進場..."></textarea>
+
+        <label for="photoInput">現場照片 / 影片</label>
+        <div class="photo-uploader">
+          <div class="photo-picker-top">
+            <label class="photo-picker-btn" for="photoInput">＋ 選擇 / 拍攝照片或影片</label>
+            <span class="photo-picker-meta">最多 12 個檔案，可一次多選；照片與影片都會跟著這筆日誌顯示在時間軸。</span>
+          </div>
+          <input id="photoInput" type="file" accept="image/*,video/*" multiple />
+          <div class="photo-preview" id="photoPreview"></div>
+          <div class="photo-count" id="photoCount">尚未選擇照片或影片</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="voice" id="voiceBtn" type="button">🎙️ 語音輸入</button>
+          <button class="secondary" id="clearTextBtn" type="button">清空文字</button>
+        </div>
+        <p class="hint" id="voiceHint">語音輸入建議使用 Chrome / Edge。第一次使用時，瀏覽器會詢問麥克風權限。</p>
+
+        <div class="btn-row">
+          <button class="primary" id="saveBtn" type="button">儲存日誌</button>
+          <button class="secondary" id="resetBtn" type="button">取消 / 重填</button>
+        </div>
+      </section>
+
+      <section>
+        <button class="primary quick-add" type="button" onclick="scrollToForm()">＋ 新增施工日誌</button>
+        <div class="card toolbar">
+          <input id="search" placeholder="搜尋工程名稱、內容、人員、施工階段..." />
+          <select id="filterProgress">
+            <option value="">全部階段</option>
+            <option>一般紀錄</option>
+            <option>進料</option>
+            <option>放樣</option>
+            <option>基礎</option>
+            <option>鋼構</option>
+            <option>浪板</option>
+            <option>模組</option>
+            <option>機電</option>
+            <option>報竣</option>
+            <option>掛表</option>
+            <option>異常 / 待處理</option>
+          </select>
+          <button class="secondary" id="exportBtn" type="button">匯出 CSV</button>
+          <button class="secondary" id="printBtn" type="button">列印 / PDF</button>
+        </div>
+
+        <div class="card timeline-card">
+          <div class="summary">
+            <div class="metric"><strong id="totalCount">0</strong><span>總筆數</span></div>
+            <div class="metric"><strong id="todayCount">0</strong><span>今日紀錄</span></div>
+            <div class="metric"><strong id="issueCount">0</strong><span>異常待處理</span></div>
+            <div class="metric"><strong id="latestDate">-</strong><span>最後更新</span></div>
+          </div>
+          <div class="timeline" id="timeline"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="mobile-bottom-bar" id="mobileProjectBar">
+    <button class="secondary" type="button" onclick="openListPage()">案場</button>
+    <button class="primary" type="button" onclick="scrollToForm()">＋ 日誌</button>
+    <button class="secondary" type="button" onclick="scrollToTimeline()">時間軸</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    'use strict';
+
+    const STORAGE_KEY = 'constructionDailyTimelineLogs.v1';
+    const SITE_STORAGE_KEY = 'constructionDailyTimelineSites.v1';
+    const MAX_PHOTOS_PER_LOG = 12;
+    const $ = (id) => document.getElementById(id);
+    const fields = ['project', 'date', 'time', 'weather', 'workers', 'progress', 'content'];
+
+    let selectedPhotos = [];
+    let hiddenDemoIds = [];
+    let sites = [];
+    let currentSiteId = null;
+    let logs = [];
+    let recognition = null;
+    let isRecording = false;
+
+    const defaultSites = [
+      {
+        id: 'site-linzi-741',
+        name: '林子段741地號菇寮工程',
+        location: '雲林縣斗六鎮林子段741地號',
+        status: '施工中',
+        stage: '鋼構 / 機電',
+        latest: '2026/05/22 14:40',
+        issues: 1
+      },
+      {
+        id: 'site-yonghua-11',
+        name: '永華十一街17巷工程',
+        location: '台南市安平區永華十一街17巷',
+        status: '待施工',
+        stage: '待進場',
+        latest: '-',
+        issues: 0
+      },
+      {
+        id: 'site-dounan-roof',
+        name: '斗南鎮屋頂型案場',
+        location: '雲林縣斗南鎮',
+        status: '驗收中',
+        stage: '設備 / 驗收',
+        latest: '2026/05/22 09:20',
+        issues: 0
+      }
+    ];
+
+    const demoLogs = [
+      {
+        id: 'demo-1', project: '林子段741地號菇寮工程', date: '2026-05-22', time: '08:30', weather: '晴', workers: '鐵工3人、吊車1台', progress: '鋼構',
+        content: '今日進行A棟鋼構立柱定位，已完成主要柱位校正。B棟右側偏心位置需再確認，現場已標示待複核點位。',
+        createdAt: '2026-05-22T08:30:00+08:00', updatedAt: '2026-05-22T08:30:00+08:00', demo: true
+      },
+      {
+        id: 'demo-2', project: '林子段741地號菇寮工程', date: '2026-05-22', time: '10:15', weather: '晴', workers: '材料車1台、現場人員2人', progress: '進料',
+        content: '浪板與部分固定件已進場，數量初步清點無明顯短缺。材料暫放於基地入口左側，需避免影響車輛動線。',
+        createdAt: '2026-05-22T10:15:00+08:00', updatedAt: '2026-05-22T10:15:00+08:00', demo: true
+      },
+      {
+        id: 'demo-3', project: '林子段741地號菇寮工程', date: '2026-05-22', time: '14:40', weather: '陰', workers: '現場監工1人、業主1人', progress: '異常 / 待處理',
+        content: '現場確認排水方向仍需調整，建議明日上午再次確認水溝位置與地坪高程，避免後續積水。',
+        createdAt: '2026-05-22T14:40:00+08:00', updatedAt: '2026-05-22T14:40:00+08:00', demo: true
+      }
+    ];
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      runSelfTests();
+      logs = loadLogs();
+      sites = loadSites();
+      currentSiteId = sites[0]?.id || null;
+      setNowDefaults();
+      bindEvents();
+      setupVoice();
+      renderSiteList();
+      updateProjectInfo();
+      render();
+      updateBottomBarVisibility();
+    }
+
+    function bindEvents() {
+      safeOn('saveBtn', 'click', saveLog);
+      safeOn('resetBtn', 'click', resetForm);
+      safeOn('clearTextBtn', 'click', () => { $('content').value = ''; });
+      safeOn('search', 'input', render);
+      safeOn('filterProgress', 'change', render);
+      safeOn('exportBtn', 'click', exportCSV);
+      safeOn('printBtn', 'click', () => window.print());
+      safeOn('voiceBtn', 'click', toggleVoice);
+      safeOn('photoInput', 'change', handlePhotoUpload);
+      safeOn('siteStatus', 'change', updateCurrentSiteStatus);
+      safeOn('siteSearch', 'input', renderSiteList);
+      safeOn('siteStatusFilter', 'change', renderSiteList);
+      window.addEventListener('resize', updateBottomBarVisibility);
+    }
+
+    function safeOn(id, event, handler) {
+      const el = $(id);
+      if (el) el.addEventListener(event, handler);
+    }
+
+    function showToast(message) {
+      const toast = $('toast');
+      if (!toast) {
+        console.log(message);
+        return;
+      }
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    function setNowDefaults() {
+      const now = new Date();
+      $('date').value = toDateInput(now);
+      $('time').value = toTimeInput(now);
+    }
+
+    function setupVoice() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        $('voiceBtn').disabled = true;
+        $('voiceBtn').textContent = '不支援語音';
+        $('voiceHint').textContent = '目前瀏覽器不支援語音辨識，建議改用 Chrome 或 Edge。';
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.lang = 'zh-TW';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        isRecording = true;
+        $('content').dataset.beforeVoice = $('content').value.trim();
+        $('voiceBtn').classList.add('recording');
+        $('voiceBtn').textContent = '🔴 停止語音';
+        $('voiceHint').textContent = '正在聆聽中，可以連續講話；再次點擊可停止。';
+      };
+
+      recognition.onresult = (event) => {
+        let finalText = '';
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const text = event.results[i][0].transcript;
+          if (event.results[i].isFinal) finalText += text + '，';
+          else interim += text;
+        }
+        const base = $('content').dataset.beforeVoice || '';
+        const append = (finalText + interim).trim();
+        $('content').value = base + (base && append ? '\n' : '') + append;
+      };
+
+      recognition.onerror = (event) => showToast('語音辨識錯誤：' + event.error);
+
+      recognition.onend = () => {
+        isRecording = false;
+        $('voiceBtn').classList.remove('recording');
+        $('voiceBtn').textContent = '🎙️ 語音輸入';
+        $('voiceHint').textContent = '語音輸入已停止。可以再次點擊繼續輸入。';
+      };
+    }
+
+    function toggleVoice() {
+      if (!recognition) return;
+      if (isRecording) recognition.stop();
+      else recognition.start();
+    }
+
+    function saveLog() {
+      const data = getFormData();
+      if (!data.content.trim()) {
+        showToast('請先輸入施工內容');
+        $('content').focus();
+        return;
+      }
+
+      const editingId = $('editingId').value;
+      if (editingId) {
+        logs = logs.map(log => log.id === editingId ? { ...log, ...data, photos: [...selectedPhotos], updatedAt: new Date().toISOString() } : log);
+        showToast('已更新施工日誌');
+      } else {
+        logs.push({
+          id: makeId(),
+          ...data,
+          photos: [...selectedPhotos],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        showToast('已新增施工日誌');
+      }
+
+      applySiteStatusFromForm(data.progress);
+      saveLogs();
+      renderSiteList();
+      resetForm();
+      render();
+      scrollToTimeline();
+    }
+
+    function getFormData() {
+      return {
+        project: $('project').value.trim() || '未命名工程',
+        date: $('date').value || toDateInput(new Date()),
+        time: $('time').value || toTimeInput(new Date()),
+        weather: $('weather').value,
+        workers: $('workers').value.trim() || '未填',
+        progress: $('progress').value,
+        content: $('content').value.trim()
+      };
+    }
+
+    function resetForm() {
+      $('editingId').value = '';
+      $('formTitle').textContent = '新增施工日誌';
+      $('saveBtn').textContent = '儲存日誌';
+      $('project').value = getCurrentSite().name;
+      if ($('siteStatus')) $('siteStatus').value = getDisplaySiteStatus(getCurrentSite());
+      $('workers').value = '';
+      $('content').value = '';
+      $('weather').value = '未填';
+      $('progress').value = '一般紀錄';
+      selectedPhotos = [];
+      $('photoInput').value = '';
+      renderPhotoPreview();
+      setNowDefaults();
+      delete $('content').dataset.beforeVoice;
+    }
+
+    function editLog(id) {
+      const log = logs.find(item => item.id === id);
+      if (!log) {
+        showToast('找不到這筆施工日誌');
+        return;
+      }
+      $('editingId').value = log.id;
+      fields.forEach(field => { $(field).value = log[field] || ''; });
+      selectedPhotos = [...(log.photos || [])];
+      renderPhotoPreview();
+      $('formTitle').textContent = '編輯施工日誌';
+      $('saveBtn').textContent = '更新日誌';
+      scrollToForm();
+    }
+
+    function deleteLog(id) {
+      const target = [...logs, ...demoLogs].find(log => log.id === id);
+      if (!target) return;
+      if (!confirm('確定要刪除這筆施工日誌嗎？')) return;
+
+      if (target.demo && !logs.length) {
+        hiddenDemoIds = Array.from(new Set([...hiddenDemoIds, id]));
+        render();
+        showToast('已刪除示範日誌');
+        return;
+      }
+
+      logs = logs.filter(log => log.id !== id);
+      saveLogs();
+      renderSiteList();
+      render();
+      showToast('已刪除施工日誌');
+    }
+
+    function render() {
+      updateProjectInfo();
+      renderSummary();
+      const query = $('search').value.trim().toLowerCase();
+      const progress = $('filterProgress').value;
+      const sourceLogs = getVisibleLogs().filter(log => log.project === getCurrentSite().name);
+      const filtered = sourceLogs
+        .filter(log => !progress || log.progress === progress)
+        .filter(log => {
+          const haystack = `${log.project} ${log.date} ${log.time} ${log.weather} ${log.workers} ${log.progress} ${log.content}`.toLowerCase();
+          return !query || haystack.includes(query);
+        })
+        .sort((a, b) => new Date(`${b.date}T${b.time || '00:00'}`) - new Date(`${a.date}T${a.time || '00:00'}`));
+
+      const container = $('timeline');
+      if (!filtered.length) {
+        container.innerHTML = '<div class="empty">目前沒有施工日誌。<br>請新增第一筆紀錄。</div>';
+        return;
+      }
+
+      const demoNotice = '';
+
+      container.innerHTML = demoNotice + filtered.map(log => `
+        <article class="entry">
+          <div class="entry-box">
+            <div class="entry-head">
+              <div>
+                <h3 class="entry-title">${escapeHTML(log.project)}</h3>
+                <div class="badge-row">
+                  <span class="badge weather">${escapeHTML(log.weather)}</span>
+                  <span class="badge people">${escapeHTML(log.workers)}</span>
+                  <span class="badge progress">${escapeHTML(log.progress)}</span>
+                </div>
+              </div>
+              <div class="entry-time">${formatDate(log.date)} ${escapeHTML(log.time || '')}</div>
+            </div>
+            <div class="entry-content">${escapeHTML(log.content)}</div>
+            ${renderEntryPhotos(log.photos || [], log.id)}
+            <div class="entry-actions">
+              <button class="secondary" type="button" onclick="editLog('${log.id}')">編輯</button>
+              <button class="danger" type="button" onclick="deleteLog('${log.id}')">刪除</button>
+            </div>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function renderSummary() {
+      const sourceLogs = getVisibleLogs().filter(log => log.project === getCurrentSite().name);
+      const today = toDateInput(new Date());
+      const latest = [...sourceLogs].sort((a, b) => new Date(`${b.date}T${b.time || '00:00'}`) - new Date(`${a.date}T${a.time || '00:00'}`))[0];
+      $('totalCount').textContent = sourceLogs.length;
+      $('todayCount').textContent = sourceLogs.filter(log => log.date === today).length;
+      $('issueCount').textContent = sourceLogs.filter(log => log.progress === '異常 / 待處理').length;
+      $('latestDate').textContent = latest ? formatDate(latest.date) : '-';
+    }
+
+    function getVisibleLogs() {
+      return logs;
+    }
+
+    function handlePhotoUpload(event) {
+      const files = Array.from(event.target.files || []);
+      if (!files.length) return;
+
+      const remainingSlots = MAX_PHOTOS_PER_LOG - selectedPhotos.length;
+      if (remainingSlots <= 0) {
+        showToast(`單筆日誌最多只能上傳 ${MAX_PHOTOS_PER_LOG} 個檔案`);
+        event.target.value = '';
+        return;
+      }
+
+      const acceptedFiles = files.slice(0, remainingSlots);
+      if (files.length > remainingSlots) {
+        showToast(`最多 ${MAX_PHOTOS_PER_LOG} 個檔案，這次只加入 ${remainingSlots} 個`);
+      }
+
+      const readers = acceptedFiles.map(file => new Promise((resolve, reject) => {
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        if (!isImage && !isVideo) return resolve(null);
+        const reader = new FileReader();
+        reader.onload = () => resolve({
+          id: makeId(),
+          name: file.name,
+          dataUrl: reader.result,
+          mediaType: isVideo ? 'video' : 'image'
+        });
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      }));
+
+      Promise.all(readers)
+        .then(results => {
+          const validFiles = results.filter(Boolean);
+          selectedPhotos = [...selectedPhotos, ...validFiles].slice(0, MAX_PHOTOS_PER_LOG);
+          renderPhotoPreview();
+          const imageCount = validFiles.filter(item => item.mediaType !== 'video').length;
+          const videoCount = validFiles.filter(item => item.mediaType === 'video').length;
+          const summary = [imageCount ? `${imageCount} 張照片` : '', videoCount ? `${videoCount} 部影片` : '']
+            .filter(Boolean)
+            .join('、');
+          showToast(`已加入 ${summary || `${validFiles.length} 個檔案`}，目前共 ${selectedPhotos.length} 個`);
+        })
+        .catch(() => showToast('檔案讀取失敗'))
+        .finally(() => { event.target.value = ''; });
+    }
+
+    function renderPhotoPreview() {
+      const preview = $('photoPreview');
+      const count = $('photoCount');
+      if (!selectedPhotos.length) {
+        preview.innerHTML = '';
+        count.textContent = '尚未選擇照片或影片';
+        return;
+      }
+
+      preview.innerHTML = selectedPhotos.map(photo => `
+        <div class="photo-item">
+          ${renderMediaPreview(photo, false)}
+          <button class="photo-remove" type="button" onclick="removeSelectedPhoto('${photo.id}')">×</button>
+        </div>
+      `).join('');
+      count.textContent = `已選擇 ${selectedPhotos.length} / ${MAX_PHOTOS_PER_LOG} 個檔案`;
+    }
+
+    function removeSelectedPhoto(id) {
+      selectedPhotos = selectedPhotos.filter(photo => photo.id !== id);
+      renderPhotoPreview();
+    }
+
+    function renderEntryPhotos(photos, logId) {
+      if (!photos.length) return '';
+      return `
+        <div class="entry-photos">
+          ${photos.map(photo => `
+            <div class="photo-item">
+              <input class="photo-select" type="checkbox" data-log-id="${escapeHTML(logId)}" data-photo-id="${escapeHTML(photo.id || '')}" aria-label="選取要下載的檔案" />
+              ${renderMediaPreview(photo, true)}
+            </div>
+          `).join('')}
+        </div>
+        <div class="photo-download-actions">
+          <button class="secondary" type="button" onclick="downloadSelectedPhotos('${escapeJS(logId)}')">下載選取檔案</button>
+        </div>
+      `;
+    }
+
+    function downloadSelectedPhotos(logId) {
+      const log = getVisibleLogs().find(item => item.id === logId);
+      if (!log || !(log.photos || []).length) {
+        showToast('找不到可下載的檔案');
+        return;
+      }
+
+      const checkedIds = Array.from(document.querySelectorAll(`.photo-select[data-log-id="${cssEscape(logId)}"]:checked`))
+        .map(input => input.dataset.photoId);
+
+      if (!checkedIds.length) {
+        showToast('請先勾選要下載的檔案');
+        return;
+      }
+
+      const selected = (log.photos || []).filter(photo => checkedIds.includes(photo.id));
+      selected.forEach((photo, index) => {
+        const a = document.createElement('a');
+        a.href = photo.dataUrl;
+        a.download = makePhotoFilename(log, photo, index + 1);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+      showToast(`已下載 ${selected.length} 個檔案`);
+    }
+
+    function renderMediaPreview(photo, showBadge) {
+      const type = photo.mediaType || (String(photo.dataUrl || '').startsWith('data:video/') ? 'video' : 'image');
+      const badge = showBadge ? `<span class="media-badge">${type === 'video' ? '影片' : '照片'}</span>` : '';
+      if (type === 'video') {
+        return `${badge}<video src="${photo.dataUrl}" muted controls playsinline preload="metadata"></video>`;
+      }
+      return `${badge}<img src="${photo.dataUrl}" alt="${escapeHTML(photo.name || '施工照片')}" />`;
+    }
+
+    function makePhotoFilename(log, photo, index) {
+      const ext = getPhotoExtension(photo);
+      const base = sanitizeFilename(`${log.date || '施工日誌'}_${log.time || ''}_${log.progress || '照片'}_${index}`);
+      return `${base}.${ext}`;
+    }
+
+    function getPhotoExtension(photo) {
+      const name = photo.name || '';
+      const match = name.match(/\.([a-zA-Z0-9]+)$/);
+      if (match) return match[1].toLowerCase();
+      const mediaType = String(photo.dataUrl || '');
+      const imageMatch = mediaType.match(/^data:image\/([a-zA-Z0-9.+-]+);/);
+      if (imageMatch) return imageMatch[1].toLowerCase().replace('jpeg', 'jpg');
+      const videoMatch = mediaType.match(/^data:video\/([a-zA-Z0-9.+-]+);/);
+      if (videoMatch) return videoMatch[1].toLowerCase().replace('quicktime', 'mov');
+      return photo.mediaType === 'video' ? 'mp4' : 'jpg';
+    }
+
+    function sanitizeFilename(name) {
+      return String(name || 'photo').replace(/[\/:*?"<>|\s]+/g, '_').replace(/^_+|_+$/g, '') || 'photo';
+    }
+
+    function cssEscape(value) {
+      if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);
+      return String(value).replace(/[^a-zA-Z0-9_-]/g, match => '\\' + match);
+    }
+
+    function exportCSV() {
+      if (!logs.length) {
+        showToast('目前沒有正式資料可匯出');
+        return;
+      }
+
+      const header = ['工程名稱', '日期', '時間', '天氣', '人員工班', '施工階段', '施工內容', '檔案數量', '建立時間', '更新時間'];
+      const rows = [...logs]
+        .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
+        .map(log => [log.project, log.date, log.time, log.weather, log.workers, log.progress, log.content, (log.photos || []).length, log.createdAt, log.updatedAt]);
+
+      const csv = [header, ...rows]
+        .map(row => row.map(cell => `"${String(cell || '').replaceAll('"', '""')}"`).join(','))
+        .join('\n');
+
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `施工日誌_${toDateInput(new Date())}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('已匯出 CSV');
+    }
+
+    function loadSites() {
+      try {
+        const raw = localStorage.getItem(SITE_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        return Array.isArray(parsed) && parsed.length ? parsed : [...defaultSites];
+      } catch (error) {
+        console.warn('案場資料讀取失敗：', error);
+        return [...defaultSites];
+      }
+    }
+
+    function saveSites() {
+      try {
+        localStorage.setItem(SITE_STORAGE_KEY, JSON.stringify(sites));
+      } catch (error) {
+        console.error('案場資料儲存失敗：', error);
+        showToast('案場資料儲存失敗');
+      }
+    }
+
+    function getCurrentSite() {
+      return sites.find(site => site.id === currentSiteId) || sites[0] || { id: 'default', name: '未命名案場', location: '未填', status: '施工中', stage: '一般紀錄', latest: '-', issues: 0 };
+    }
+
+    function getSiteLogs(site) {
+      const siteName = typeof site === 'string' ? site : (site && site.name) || '';
+      return logs.filter(log => log.project === siteName);
+    }
+
+    function getLogSortValue(log) {
+      const scheduleValue = Date.parse(`${log.date || ''}T${log.time || '00:00'}`);
+      if (!Number.isNaN(scheduleValue)) return scheduleValue;
+      const updatedValue = Date.parse(log.updatedAt || log.createdAt || '');
+      return Number.isNaN(updatedValue) ? 0 : updatedValue;
+    }
+
+    function getLatestSiteLog(site) {
+      return getSiteLogs(site)
+        .slice()
+        .sort((a, b) => getLogSortValue(b) - getLogSortValue(a))[0] || null;
+    }
+
+    function getDisplaySiteStage(site) {
+      const latestLog = getLatestSiteLog(site);
+      return latestLog?.progress || site?.stage || '一般紀錄';
+    }
+
+    function getDisplaySiteStatus(site) {
+      const latestLog = getLatestSiteLog(site);
+      if (latestLog && latestLog.progress === '掛表') return '已完成';
+      if (latestLog && latestLog.progress === '報竣') return '驗收中';
+      return site?.status || (latestLog ? '施工中' : '待施工');
+    }
+
+    function getLatestSiteUpdateText(site) {
+      const latestLog = getLatestSiteLog(site);
+      if (!latestLog) return '最後更新：-';
+      return `最後更新：${formatDate(latestLog.date)} ${latestLog.time || ''}`.trim();
+    }
+
+    function getSiteStatusClass(status) {
+      if (status === '施工中') return 'doing';
+      if (status === '驗收中') return 'check';
+      if (status === '已完成') return 'done';
+      return 'pending';
+    }
+
+    function renderSiteList() {
+      const container = $('siteList');
+      if (!container) return;
+      const query = ($('siteSearch')?.value || '').trim().toLowerCase();
+      const status = $('siteStatusFilter')?.value || '全部狀態';
+      const filteredSites = sites.filter(site => {
+        const currentStage = getDisplaySiteStage(site);
+        const currentStatus = getDisplaySiteStatus(site);
+        const latestTextForSearch = getLatestSiteUpdateText(site);
+        const haystack = `${site.name} ${site.location} ${currentStatus} ${currentStage} ${latestTextForSearch}`.toLowerCase();
+        const matchQuery = !query || haystack.includes(query);
+        const matchStatus = status === '全部狀態' || currentStatus === status;
+        return matchQuery && matchStatus;
+      });
+
+      if (!filteredSites.length) {
+        container.innerHTML = '<div class="empty">目前沒有符合條件的案場。<br>可點右上角新增案場。</div>';
+        return;
+      }
+
+      container.innerHTML = filteredSites.map(site => {
+        const siteLogs = getSiteLogs(site);
+        const today = toDateInput(new Date());
+        const todayCount = siteLogs.filter(log => log.date === today).length;
+        const issueCount = siteLogs.filter(log => log.progress === '異常 / 待處理').length;
+        const latest = getLatestSiteLog(site);
+        const latestText = latest ? `${formatDate(latest.date)} ${latest.time || ''}` : (site.latest || '-');
+        const currentStage = getDisplaySiteStage(site);
+        const currentStatus = getDisplaySiteStatus(site);
+        return `
+          <article class="site-card ${site.id === currentSiteId ? 'active-site' : ''}" tabindex="0" role="button" onkeydown="handleSiteCardKeydown(event, '${escapeJS(site.id)}')" onclick="openProjectPage('${escapeJS(site.id)}')">
+            <div class="site-main">
+              <div>
+                <span class="site-status ${getSiteStatusClass(currentStatus)}">${escapeHTML(currentStatus)}</span>
+                <h2>${escapeHTML(site.name)}</h2>
+                <p>${escapeHTML(site.location || '未填位置')}</p>
+              </div>
+              <div class="site-card-actions">
+                <strong>今日 ${todayCount} 筆日誌</strong>
+                <button class="site-delete-btn" type="button" onclick="deleteSite('${escapeJS(site.id)}', event)">刪除</button>
+              </div>
+            </div>
+            <div class="site-meta">
+              <span>目前階段：${escapeHTML(currentStage)}</span>
+              <span>最後更新：${escapeHTML(latestText)}</span>
+              <span>異常待處理：${issueCount}</span>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function handleSiteCardKeydown(event, siteId) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openProjectPage(siteId);
+      }
+    }
+
+
+
+    function updateCurrentSiteStatus() {
+      const site = getCurrentSite();
+      const statusSelect = $('siteStatus');
+      if (!site || !statusSelect) return;
+      site.status = statusSelect.value;
+      saveSites();
+      updateProjectInfo();
+      renderSiteList();
+      showToast(`案場狀態已改為「${site.status}」`);
+    }
+
+    function applySiteStatusFromForm(progress) {
+      const site = getCurrentSite();
+      const statusSelect = $('siteStatus');
+      if (!site) return;
+      if (progress === '掛表') {
+        site.status = '已完成';
+        if (statusSelect) statusSelect.value = '已完成';
+      } else if (statusSelect) {
+        site.status = statusSelect.value || site.status || '施工中';
+      }
+      saveSites();
+      updateProjectInfo();
+    }
+
+    function createSite() {
+      const name = prompt('請輸入案場名稱');
+      if (!name || !name.trim()) return;
+      const cleanName = name.trim();
+      if (sites.some(site => site.name === cleanName)) {
+        showToast('已有相同案場名稱');
+        return;
+      }
+
+      const site = {
+        id: makeId().replace(/^log-/, 'site-'),
+        name: cleanName,
+        location: '未填位置',
+        status: '施工中',
+        stage: '一般紀錄',
+        latest: '-',
+        issues: 0
+      };
+
+      sites.push(site);
+      currentSiteId = site.id;
+      saveSites();
+      renderSiteList();
+      openProjectPage(site.id);
+      window.setTimeout(() => {
+        const form = document.querySelector('.form-card');
+        if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const content = $('content');
+        if (content) content.focus({ preventScroll: true });
+      }, 120);
+      showToast('已新增案場，已進入施工日誌編輯區');
+    }
+
+    function deleteSite(siteId, event) {
+      if (event) event.stopPropagation();
+      const site = sites.find(item => item.id === siteId);
+      if (!site) return;
+      if (!confirm(`確定要刪除「${site.name}」嗎？\n刪除後，此案場列表資料會移除。`)) return;
+      const typedName = prompt(`請再次輸入案場名稱以確認刪除：\n${site.name}`);
+      if (typedName !== site.name) {
+        showToast('案場名稱不一致，已取消刪除');
+        return;
+      }
+      sites = sites.filter(item => item.id !== siteId);
+      if (currentSiteId === siteId) currentSiteId = sites[0]?.id || null;
+      saveSites();
+      renderSiteList();
+      updateProjectInfo();
+      render();
+      showToast('已刪除案場');
+    }
+
+    function updateProjectInfo() {
+      const site = getCurrentSite();
+      const currentStage = getDisplaySiteStage(site);
+      const currentStatus = getDisplaySiteStatus(site);
+      const latestUpdateText = getLatestSiteUpdateText(site);
+      if ($('projectBreadcrumb')) $('projectBreadcrumb').textContent = `首頁 / 案場管理 / ${site.name} / 施工日誌`;
+      if ($('projectTitle')) $('projectTitle').textContent = `${site.name}｜施工日誌`;
+      if ($('overviewStatus')) $('overviewStatus').textContent = currentStatus;
+      if ($('overviewStage')) $('overviewStage').textContent = currentStage;
+      if ($('overviewStageTime')) $('overviewStageTime').textContent = latestUpdateText;
+      if ($('overviewLocation')) $('overviewLocation').textContent = site.location || '未填位置';
+      if ($('siteStatus')) $('siteStatus').value = currentStatus;
+      if ($('project')) $('project').value = site.name;
+    }
+
+    function loadLogs() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.warn('施工日誌讀取失敗：', error);
+        return [];
+      }
+    }
+
+    function saveLogs() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+        const status = $('saveStatus');
+        if (status) status.textContent = '已儲存於本機';
+      } catch (error) {
+        console.error('施工日誌儲存失敗：', error);
+        showToast('儲存失敗：照片可能太多或檔案太大');
+      }
+    }
+
+    function toDateInput(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function toTimeInput(date) {
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return '-';
+      const parts = dateString.split('-');
+      if (parts.length !== 3) return escapeHTML(dateString);
+      return `${parts[0]}/${parts[1]}/${parts[2]}`;
+    }
+
+    function makeId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return `log-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function escapeJS(value) {
+      return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    function openProjectPage(siteId = currentSiteId) {
+      if (siteId) currentSiteId = siteId;
+      if (!getCurrentSite()) {
+        showToast('請先新增案場');
+        return;
+      }
+      updateProjectInfo();
+      resetForm();
+      render();
+      $('listPage').style.display = 'none';
+      $('projectPage').style.display = '';
+      updateBottomBarVisibility();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openListPage() {
+      renderSiteList();
+      $('projectPage').style.display = 'none';
+      $('listPage').style.display = '';
+      updateBottomBarVisibility();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function scrollToForm() {
+      openProjectPage();
+      const form = document.querySelector('.form-card');
+      if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function scrollToTimeline() {
+      const timeline = $('timeline');
+      if (timeline) timeline.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function togglePreviewMode() {
+      document.body.classList.toggle('mobile-preview-mode');
+      updateBottomBarVisibility();
+    }
+
+    function updateBottomBarVisibility() {
+      const bar = $('mobileProjectBar');
+      const projectPage = $('projectPage');
+      if (!bar || !projectPage) return;
+      const isProjectOpen = projectPage.style.display !== 'none';
+      bar.style.display = isProjectOpen ? '' : 'none';
+    }
+
+    function runSelfTests() {
+      const requiredIds = ['listPage', 'projectPage', 'timeline', 'saveBtn', 'photoInput', 'mobileProjectBar'];
+      const missing = requiredIds.filter(id => !$(id));
+      if (missing.length) console.warn('缺少必要元素：', missing.join(', '));
+    }
+  </script>
+</body>
+</html>
