@@ -427,6 +427,23 @@
       font-size: 11px;
     }
 
+
+    .photo-download-btn {
+      position: absolute;
+      right: 5px;
+      bottom: 5px;
+      z-index: 3;
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, .88);
+      color: #fff;
+      font-size: 10px;
+      line-height: 1;
+      box-shadow: none;
+    }
+
+    .photo-download-btn:hover { background: rgba(29, 78, 216, .95); }
+
     .entry-photos { grid-template-columns: repeat(4, minmax(60px, 1fr)); margin: 9px 0 10px; }
     .photo-count { color: var(--muted); font-size: 11px; margin-top: 6px; }
 
@@ -733,10 +750,13 @@
       <div>
         <div class="breadcrumb">首頁 / 案場管理</div>
         <h1>案場列表</h1>
-        <p class="subtitle">新增案場後會留在案場列表；點選案場卡片後進入施工日誌時間軸。</p>
+        <p class="subtitle">可新增案場，也可匯出 / 匯入 JSON 備份檔，後續接雲端資料會比較方便。</p>
       </div>
       <div class="header-actions">
         <button class="primary" type="button" onclick="createSite()">＋ 新增案場</button>
+        <button class="secondary" type="button" onclick="exportBackupJSON()">匯出資料</button>
+        <button class="secondary" type="button" onclick="triggerBackupImport()">匯入檔案</button>
+        <input id="backupImportInput" type="file" accept="application/json,.json" style="display:none;" />
       </div>
     </header>
 
@@ -780,7 +800,10 @@
         <input type="hidden" id="editingId" />
 
         <label for="project">工程名稱</label>
-        <input id="project" value="林子段741地號菇寮工程" placeholder="例如：林子段741地號菇寮工程" />
+        <input id="project" value="" placeholder="例如：林子段741地號菇寮工程" />
+
+        <label for="siteLocation">案場位置 / 地號</label>
+        <input id="siteLocation" value="" placeholder="例如：雲林縣斗六鎮林子段741地號" />
 
         <label for="siteStatus">案場狀態</label>
         <select id="siteStatus">
@@ -853,7 +876,7 @@
           <button class="voice" id="voiceBtn" type="button">🎙️ 語音輸入</button>
           <button class="secondary" id="clearTextBtn" type="button">清空文字</button>
         </div>
-        <p class="hint" id="voiceHint">語音輸入建議使用 Chrome / Edge。第一次使用時，瀏覽器會詢問麥克風權限。</p>
+        <p class="hint" id="voiceHint">語音輸入建議使用 Chrome / Edge；若無法啟動，請確認麥克風權限與瀏覽器支援。</p>
 
         <div class="btn-row">
           <button class="primary" id="saveBtn" type="button">儲存日誌</button>
@@ -907,8 +930,8 @@
   <script>
     'use strict';
 
-    const STORAGE_KEY = 'constructionDailyTimelineLogs.v1';
-    const SITE_STORAGE_KEY = 'constructionDailyTimelineSites.v1';
+    const STORAGE_KEY = 'constructionDailyTimelineLogs.clean.v1';
+    const SITE_STORAGE_KEY = 'constructionDailyTimelineSites.clean.v1';
     const MAX_PHOTOS_PER_LOG = 12;
     const $ = (id) => document.getElementById(id);
     const fields = ['project', 'date', 'time', 'weather', 'workers', 'progress', 'content'];
@@ -921,53 +944,9 @@
     let recognition = null;
     let isRecording = false;
 
-    const defaultSites = [
-      {
-        id: 'site-linzi-741',
-        name: '林子段741地號菇寮工程',
-        location: '雲林縣斗六鎮林子段741地號',
-        status: '施工中',
-        stage: '鋼構 / 機電',
-        latest: '2026/05/22 14:40',
-        issues: 1
-      },
-      {
-        id: 'site-yonghua-11',
-        name: '永華十一街17巷工程',
-        location: '台南市安平區永華十一街17巷',
-        status: '待施工',
-        stage: '待進場',
-        latest: '-',
-        issues: 0
-      },
-      {
-        id: 'site-dounan-roof',
-        name: '斗南鎮屋頂型案場',
-        location: '雲林縣斗南鎮',
-        status: '驗收中',
-        stage: '設備 / 驗收',
-        latest: '2026/05/22 09:20',
-        issues: 0
-      }
-    ];
+    const defaultSites = [];
 
-    const demoLogs = [
-      {
-        id: 'demo-1', project: '林子段741地號菇寮工程', date: '2026-05-22', time: '08:30', weather: '晴', workers: '鐵工3人、吊車1台', progress: '鋼構',
-        content: '今日進行A棟鋼構立柱定位，已完成主要柱位校正。B棟右側偏心位置需再確認，現場已標示待複核點位。',
-        createdAt: '2026-05-22T08:30:00+08:00', updatedAt: '2026-05-22T08:30:00+08:00', demo: true
-      },
-      {
-        id: 'demo-2', project: '林子段741地號菇寮工程', date: '2026-05-22', time: '10:15', weather: '晴', workers: '材料車1台、現場人員2人', progress: '進料',
-        content: '浪板與部分固定件已進場，數量初步清點無明顯短缺。材料暫放於基地入口左側，需避免影響車輛動線。',
-        createdAt: '2026-05-22T10:15:00+08:00', updatedAt: '2026-05-22T10:15:00+08:00', demo: true
-      },
-      {
-        id: 'demo-3', project: '林子段741地號菇寮工程', date: '2026-05-22', time: '14:40', weather: '陰', workers: '現場監工1人、業主1人', progress: '異常 / 待處理',
-        content: '現場確認排水方向仍需調整，建議明日上午再次確認水溝位置與地坪高程，避免後續積水。',
-        createdAt: '2026-05-22T14:40:00+08:00', updatedAt: '2026-05-22T14:40:00+08:00', demo: true
-      }
-    ];
+    const demoLogs = [];
 
     document.addEventListener('DOMContentLoaded', init);
 
@@ -996,8 +975,11 @@
       safeOn('voiceBtn', 'click', toggleVoice);
       safeOn('photoInput', 'change', handlePhotoUpload);
       safeOn('siteStatus', 'change', updateCurrentSiteStatus);
+      safeOn('siteLocation', 'change', updateCurrentSiteInfoFromForm);
+      safeOn('project', 'change', updateCurrentSiteInfoFromForm);
       safeOn('siteSearch', 'input', renderSiteList);
       safeOn('siteStatusFilter', 'change', renderSiteList);
+      safeOn('backupImportInput', 'change', importBackupFile);
       window.addEventListener('resize', updateBottomBarVisibility);
     }
 
@@ -1026,24 +1008,32 @@
 
     function setupVoice() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const voiceBtn = $('voiceBtn');
+      const voiceHint = $('voiceHint');
+
       if (!SpeechRecognition) {
-        $('voiceBtn').disabled = true;
-        $('voiceBtn').textContent = '不支援語音';
-        $('voiceHint').textContent = '目前瀏覽器不支援語音辨識，建議改用 Chrome 或 Edge。';
+        voiceBtn.disabled = true;
+        voiceBtn.textContent = '不支援語音';
+        voiceHint.textContent = '此瀏覽器不支援語音辨識，請改用 Chrome / Edge 開啟。iPhone Safari 通常無法使用此功能。';
         return;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        voiceHint.textContent = '瀏覽器無法取得麥克風，請改用 Chrome / Edge，或確認網址不是被限制的環境。';
       }
 
       recognition = new SpeechRecognition();
       recognition.lang = 'zh-TW';
       recognition.continuous = true;
       recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         isRecording = true;
         $('content').dataset.beforeVoice = $('content').value.trim();
-        $('voiceBtn').classList.add('recording');
-        $('voiceBtn').textContent = '🔴 停止語音';
-        $('voiceHint').textContent = '正在聆聽中，可以連續講話；再次點擊可停止。';
+        voiceBtn.classList.add('recording');
+        voiceBtn.textContent = '🔴 停止語音';
+        voiceHint.textContent = '正在聆聽中，可以連續講話；再次點擊可停止。';
       };
 
       recognition.onresult = (event) => {
@@ -1059,23 +1049,52 @@
         $('content').value = base + (base && append ? '\n' : '') + append;
       };
 
-      recognition.onerror = (event) => showToast('語音辨識錯誤：' + event.error);
+      recognition.onerror = (event) => {
+        const messages = {
+          'not-allowed': '麥克風權限被拒絕，請到瀏覽器網址列左側鎖頭 / 權限設定，允許麥克風後再試。',
+          'service-not-allowed': '瀏覽器封鎖語音服務，請改用 Chrome / Edge，或用 http://localhost / https 網址開啟。',
+          'audio-capture': '找不到麥克風，請確認麥克風有接上且沒有被其他程式占用。',
+          'no-speech': '沒有偵測到聲音，請靠近麥克風後再按一次。',
+          'network': '語音辨識需要網路或瀏覽器語音服務，目前連線失敗。',
+          'aborted': '語音辨識已中止。'
+        };
+        const message = messages[event.error] || `語音辨識錯誤：${event.error}`;
+        voiceHint.textContent = message;
+        showToast(message);
+      };
 
       recognition.onend = () => {
         isRecording = false;
-        $('voiceBtn').classList.remove('recording');
-        $('voiceBtn').textContent = '🎙️ 語音輸入';
-        $('voiceHint').textContent = '語音輸入已停止。可以再次點擊繼續輸入。';
+        voiceBtn.classList.remove('recording');
+        voiceBtn.textContent = '🎙️ 語音輸入';
+        if (!voiceHint.textContent.includes('權限') && !voiceHint.textContent.includes('錯誤')) {
+          voiceHint.textContent = '語音輸入已停止。可以再次點擊繼續輸入。';
+        }
       };
     }
 
-    function toggleVoice() {
+    async function toggleVoice() {
       if (!recognition) return;
-      if (isRecording) recognition.stop();
-      else recognition.start();
+      if (isRecording) {
+        recognition.stop();
+        return;
+      }
+
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(track => track.stop());
+        }
+        recognition.start();
+      } catch (error) {
+        const message = '無法啟動語音輸入：請允許麥克風權限，並建議使用 Chrome / Edge。';
+        $('voiceHint').textContent = message;
+        showToast(message);
+      }
     }
 
     function saveLog() {
+      updateCurrentSiteInfoFromForm();
       const data = getFormData();
       if (!data.content.trim()) {
         showToast('請先輸入施工內容');
@@ -1122,7 +1141,8 @@
       $('editingId').value = '';
       $('formTitle').textContent = '新增施工日誌';
       $('saveBtn').textContent = '儲存日誌';
-      $('project').value = getCurrentSite().name;
+      $('project').value = getCurrentSite().name || '';
+      if ($('siteLocation')) $('siteLocation').value = getCurrentSite().location || '';
       if ($('siteStatus')) $('siteStatus').value = getDisplaySiteStatus(getCurrentSite());
       $('workers').value = '';
       $('content').value = '';
@@ -1308,11 +1328,13 @@
             <div class="photo-item">
               <input class="photo-select" type="checkbox" data-log-id="${escapeHTML(logId)}" data-photo-id="${escapeHTML(photo.id || '')}" aria-label="選取要下載的檔案" />
               ${renderMediaPreview(photo, true)}
+              <button class="photo-download-btn" type="button" onclick="downloadSinglePhoto('${escapeJS(logId)}', '${escapeJS(photo.id || '')}', event)">下載</button>
             </div>
           `).join('')}
         </div>
         <div class="photo-download-actions">
-          <button class="secondary" type="button" onclick="downloadSelectedPhotos('${escapeJS(logId)}')">下載選取檔案</button>
+          <button class="secondary" type="button" onclick="downloadSelectedPhotos('${escapeJS(logId)}')">下載勾選檔案</button>
+          <button class="secondary" type="button" onclick="downloadAllPhotos('${escapeJS(logId)}')">全部下載</button>
         </div>
       `;
     }
@@ -1328,20 +1350,85 @@
         .map(input => input.dataset.photoId);
 
       if (!checkedIds.length) {
-        showToast('請先勾選要下載的檔案');
+        showToast('尚未勾選，已改為下載全部檔案');
+        downloadPhotos(log, log.photos || []);
         return;
       }
 
       const selected = (log.photos || []).filter(photo => checkedIds.includes(photo.id));
-      selected.forEach((photo, index) => {
+      downloadPhotos(log, selected);
+    }
+
+    function downloadAllPhotos(logId) {
+      const log = getVisibleLogs().find(item => item.id === logId);
+      if (!log || !(log.photos || []).length) {
+        showToast('找不到可下載的檔案');
+        return;
+      }
+      downloadPhotos(log, log.photos || []);
+    }
+
+    function downloadSinglePhoto(logId, photoId, event) {
+      if (event) event.stopPropagation();
+      const log = getVisibleLogs().find(item => item.id === logId);
+      const photo = log?.photos?.find(item => item.id === photoId);
+      if (!log || !photo) {
+        showToast('找不到這個檔案');
+        return;
+      }
+      downloadPhotos(log, [photo]);
+    }
+
+    function downloadPhotos(log, photos) {
+      if (!photos.length) {
+        showToast('沒有可下載的檔案');
+        return;
+      }
+
+      photos.forEach((photo, index) => {
+        window.setTimeout(() => {
+          const filename = makePhotoFilename(log, photo, index + 1);
+          downloadDataUrl(photo.dataUrl, filename);
+        }, index * 250);
+      });
+      showToast(`已開始下載 ${photos.length} 個檔案`);
+    }
+
+    function downloadDataUrl(dataUrl, filename) {
+      try {
+        const blob = dataUrlToBlob(dataUrl);
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = photo.dataUrl;
-        a.download = makePhotoFilename(log, photo, index + 1);
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-      });
-      showToast(`已下載 ${selected.length} 個檔案`);
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        console.warn('下載失敗，改用原始連結下載：', error);
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    }
+
+    function dataUrlToBlob(dataUrl) {
+      const parts = String(dataUrl || '').split(',');
+      if (parts.length < 2) throw new Error('Invalid data URL');
+      const meta = parts[0];
+      const mimeMatch = meta.match(/^data:([^;]+);base64$/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+      const binary = atob(parts[1]);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return new Blob([bytes], { type: mimeType });
     }
 
     function renderMediaPreview(photo, showBadge) {
@@ -1380,16 +1467,92 @@
       return String(value).replace(/[^a-zA-Z0-9_-]/g, match => '\\' + match);
     }
 
+    function exportBackupJSON() {
+      const backup = {
+        app: 'construction-daily-timeline',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        sites,
+        logs
+      };
+
+      const json = JSON.stringify(backup, null, 2);
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `施工日誌雲端備份_${toDateInput(new Date())}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('已匯出 JSON 備份檔');
+    }
+
+    function triggerBackupImport() {
+      const input = $('backupImportInput');
+      if (!input) return;
+      input.value = '';
+      input.click();
+    }
+
+    function importBackupFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(String(reader.result || ''));
+          const importedSites = Array.isArray(data.sites) ? data.sites : null;
+          const importedLogs = Array.isArray(data.logs) ? data.logs : null;
+
+          if (!importedSites || !importedLogs) {
+            showToast('匯入失敗：檔案格式不正確');
+            return;
+          }
+
+          const confirmMessage = `確定匯入這份資料嗎？\n\n案場：${importedSites.length} 筆\n日誌：${importedLogs.length} 筆\n\n匯入後會覆蓋目前本機資料。`;
+          if (!confirm(confirmMessage)) return;
+
+          sites = importedSites.length ? importedSites : [...defaultSites];
+          logs = importedLogs;
+          currentSiteId = sites[0]?.id || null;
+          selectedPhotos = [];
+          hiddenDemoIds = [];
+
+          saveSites();
+          saveLogs();
+          renderSiteList();
+          updateProjectInfo();
+          resetForm();
+          render();
+          openListPage();
+          showToast('已匯入備份檔');
+        } catch (error) {
+          console.error('匯入資料失敗：', error);
+          showToast('匯入失敗：無法讀取 JSON 檔');
+        } finally {
+          event.target.value = '';
+        }
+      };
+      reader.onerror = () => showToast('匯入失敗：檔案讀取錯誤');
+      reader.readAsText(file, 'utf-8');
+    }
+
     function exportCSV() {
       if (!logs.length) {
         showToast('目前沒有正式資料可匯出');
         return;
       }
 
-      const header = ['工程名稱', '日期', '時間', '天氣', '人員工班', '施工階段', '施工內容', '檔案數量', '建立時間', '更新時間'];
+      const header = ['工程名稱', '案場位置 / 地號', '日期', '時間', '天氣', '人員工班', '施工階段', '施工內容', '檔案數量', '建立時間', '更新時間'];
       const rows = [...logs]
         .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
-        .map(log => [log.project, log.date, log.time, log.weather, log.workers, log.progress, log.content, (log.photos || []).length, log.createdAt, log.updatedAt]);
+        .map(log => {
+          const site = sites.find(item => item.name === log.project);
+          return [log.project, site?.location || '', log.date, log.time, log.weather, log.workers, log.progress, log.content, (log.photos || []).length, log.createdAt, log.updatedAt];
+        });
 
       const csv = [header, ...rows]
         .map(row => row.map(cell => `"${String(cell || '').replaceAll('"', '""')}"`).join(','))
@@ -1535,6 +1698,31 @@
 
 
 
+    function updateCurrentSiteInfoFromForm() {
+      const site = getCurrentSite();
+      if (!site || !site.id || site.id === 'default') return;
+
+      const projectInput = $('project');
+      const locationInput = $('siteLocation');
+      const nextName = projectInput ? projectInput.value.trim() : site.name;
+      const nextLocation = locationInput ? locationInput.value.trim() : site.location;
+
+      if (nextName) {
+        const nameChanged = site.name !== nextName;
+        const oldName = site.name;
+        site.name = nextName;
+        if (nameChanged) {
+          logs = logs.map(log => log.project === oldName ? { ...log, project: nextName, updatedAt: log.updatedAt || new Date().toISOString() } : log);
+          saveLogs();
+        }
+      }
+
+      site.location = nextLocation || '未填位置';
+      saveSites();
+      updateProjectInfo();
+      renderSiteList();
+    }
+
     function updateCurrentSiteStatus() {
       const site = getCurrentSite();
       const statusSelect = $('siteStatus');
@@ -1623,8 +1811,9 @@
       if ($('overviewStage')) $('overviewStage').textContent = currentStage;
       if ($('overviewStageTime')) $('overviewStageTime').textContent = latestUpdateText;
       if ($('overviewLocation')) $('overviewLocation').textContent = site.location || '未填位置';
+      if ($('siteLocation')) $('siteLocation').value = site.location === '未填位置' ? '' : (site.location || '');
       if ($('siteStatus')) $('siteStatus').value = currentStatus;
-      if ($('project')) $('project').value = site.name;
+      if ($('project')) $('project').value = site.name || '';
     }
 
     function loadLogs() {
