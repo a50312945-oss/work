@@ -943,6 +943,8 @@
     let logs = [];
     let recognition = null;
     let isRecording = false;
+    let voiceSessionBase = '';
+    let voiceFinalText = '';
 
     const defaultSites = [];
 
@@ -971,7 +973,7 @@
       safeOn('search', 'input', render);
       safeOn('filterProgress', 'change', render);
       safeOn('exportBtn', 'click', exportCSV);
-      safeOn('printBtn', 'click', () => window.print());
+      safeOn('printBtn', 'click', printPDF);
       safeOn('voiceBtn', 'click', toggleVoice);
       safeOn('photoInput', 'change', handlePhotoUpload);
       safeOn('siteStatus', 'change', updateCurrentSiteStatus);
@@ -1065,12 +1067,29 @@
 
       recognition.onend = () => {
         isRecording = false;
+        voiceSessionBase = $('content').value.trim();
+        voiceFinalText = '';
         voiceBtn.classList.remove('recording');
         voiceBtn.textContent = '🎙️ 語音輸入';
         if (!voiceHint.textContent.includes('權限') && !voiceHint.textContent.includes('錯誤')) {
           voiceHint.textContent = '語音輸入已停止。可以再次點擊繼續輸入。';
         }
       };
+    }
+
+    function normalizeVoiceSentence(text) {
+      const clean = String(text || '').trim();
+      if (!clean) return '';
+      return /[，。！？、,.!?]$/.test(clean) ? `${clean} ` : `${clean}，`;
+    }
+
+    function joinTextWithNewLine(base, append) {
+      const left = String(base || '').trim();
+      const right = String(append || '').trim();
+      if (!left) return right;
+      if (!right) return left;
+      return `${left}
+${right}`;
     }
 
     async function toggleVoice() {
@@ -1540,6 +1559,98 @@
       reader.readAsText(file, 'utf-8');
     }
 
+    function printPDF() {
+      const site = getCurrentSite();
+      const sourceLogs = getVisibleLogs()
+        .filter(log => log.project === site.name)
+        .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`));
+
+      const printHtml = buildPrintHTML(site, sourceLogs);
+      const frame = document.createElement('iframe');
+      frame.setAttribute('title', '施工日誌列印PDF');
+      frame.style.position = 'fixed';
+      frame.style.right = '0';
+      frame.style.bottom = '0';
+      frame.style.width = '0';
+      frame.style.height = '0';
+      frame.style.border = '0';
+      frame.style.opacity = '0';
+      document.body.appendChild(frame);
+
+      const doc = frame.contentWindow.document;
+      doc.open();
+      doc.write(printHtml);
+      doc.close();
+
+      window.setTimeout(() => {
+        try {
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+          showToast('已開啟列印 / PDF 視窗');
+        } catch (error) {
+          showToast('無法開啟列印視窗，請確認瀏覽器沒有封鎖列印功能');
+          console.error('列印失敗：', error);
+        }
+        window.setTimeout(() => frame.remove(), 1500);
+      }, 350);
+    }
+
+    function buildPrintHTML(site, sourceLogs) {
+      const rows = sourceLogs.length ? sourceLogs.map(log => `
+        <section class="print-entry">
+          <div class="print-entry-head">
+            <strong>${escapeHTML(log.progress || '一般紀錄')}</strong>
+            <span>${formatDate(log.date)} ${escapeHTML(log.time || '')}</span>
+          </div>
+          <div class="print-meta">天氣：${escapeHTML(log.weather || '未填')}　人員 / 工班：${escapeHTML(log.workers || '未填')}</div>
+          <div class="print-content">${escapeHTML(log.content || '').replaceAll('\n', '<br>')}</div>
+          ${buildPrintMediaHTML(log.photos || [])}
+        </section>
+      `).join('') : '<div class="empty-print">目前沒有施工日誌。</div>';
+
+      return `<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>${escapeHTML(site.name || '施工日誌')}｜列印</title>
+<style>
+  body { font-family: "Microsoft JhengHei", "Noto Sans TC", Arial, sans-serif; margin: 24px; color: #182230; font-size: 12px; }
+  h1 { margin: 0 0 8px; font-size: 22px; }
+  .summary { border: 1px solid #d7deea; border-radius: 12px; padding: 12px; margin: 12px 0 18px; line-height: 1.8; }
+  .print-entry { break-inside: avoid; border: 1px solid #d7deea; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+  .print-entry-head { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #e5eaf2; padding-bottom: 8px; margin-bottom: 8px; }
+  .print-entry-head strong { font-size: 15px; }
+  .print-entry-head span, .print-meta { color: #667085; }
+  .print-content { margin-top: 8px; line-height: 1.65; white-space: normal; }
+  .print-media { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .print-media img, .print-media video { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid #e5eaf2; border-radius: 8px; }
+  .video-box { border: 1px solid #e5eaf2; border-radius: 8px; padding: 12px; color: #667085; text-align: center; }
+  .empty-print { padding: 24px; color: #667085; border: 1px dashed #cbd5e1; border-radius: 12px; text-align: center; }
+  @media print { body { margin: 12mm; } }
+</style>
+</head>
+<body>
+  <h1>${escapeHTML(site.name || '未命名案場')}｜施工日誌</h1>
+  <div class="summary">
+    案場狀態：${escapeHTML(getDisplaySiteStatus(site))}<br>
+    目前階段：${escapeHTML(getDisplaySiteStage(site))}<br>
+    位置 / 地號：${escapeHTML(site.location || '未填')}<br>
+    匯出時間：${new Date().toLocaleString('zh-TW')}
+  </div>
+  ${rows}
+</body>
+</html>`;
+    }
+
+    function buildPrintMediaHTML(photos) {
+      if (!photos.length) return '';
+      return `<div class="print-media">${photos.map(photo => {
+        const type = photo.mediaType || (String(photo.dataUrl || '').startsWith('data:video/') ? 'video' : 'image');
+        if (type === 'video') return `<div class="video-box">影片檔<br>${escapeHTML(photo.name || '')}</div>`;
+        return `<img src="${photo.dataUrl}" alt="${escapeHTML(photo.name || '施工照片')}">`;
+      }).join('')}</div>`;
+    }
+
     function exportCSV() {
       if (!logs.length) {
         showToast('目前沒有正式資料可匯出');
@@ -1900,7 +2011,10 @@
     }
 
     function scrollToForm() {
-      openProjectPage();
+      const projectPage = $('projectPage');
+      if (projectPage && projectPage.style.display === 'none') {
+        openProjectPage();
+      }
       const form = document.querySelector('.form-card');
       if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
