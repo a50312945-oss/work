@@ -789,7 +789,7 @@
 
     <section class="project-overview card">
       <div><span>案場狀態</span><strong id="overviewStatus">施工中</strong></div>
-      <div><span>目前階段</span><strong id="overviewStage">鋼構 / 機電</strong><small id="overviewStageTime">最後更新：-</small></div>
+      <div><span>目前階段</span><strong id="overviewStage">日常巡檢</strong><small id="overviewStageTime">最後更新：-</small></div>
       <div><span>位置</span><strong id="overviewLocation">雲林縣斗六鎮林子段741地號</strong></div>
       <div><span>內頁功能</span><strong>日誌、照片、待辦、匯出</strong></div>
     </section>
@@ -812,7 +812,7 @@
           <option>驗收中</option>
           <option>已完成</option>
         </select>
-        <p class="hint" id="siteStatusHint">若施工階段儲存為「掛表」，案場狀態會自動改為「已完成」。</p>
+        <p class="hint" id="siteStatusHint">若施工階段儲存為「竣工掛表」，案場狀態會自動改為「已完成」。</p>
 
         <div class="row">
           <div>
@@ -845,21 +845,25 @@
 
         <label for="progress">施工階段</label>
         <select id="progress">
-          <option>一般紀錄</option>
-          <option>進料</option>
-          <option>放樣</option>
-          <option>基礎</option>
-          <option>鋼構</option>
-          <option>浪板</option>
-          <option>模組</option>
-          <option>機電</option>
-          <option>報竣</option>
-          <option>掛表</option>
-          <option>異常 / 待處理</option>
+          <option>日常巡檢</option>
+          <option>現勘/估價</option>
+          <option>物料進場</option>
+          <option>開挖放樣工程</option>
+          <option>基礎工程</option>
+          <option>支架組立工程</option>
+          <option>模組鋪設工程</option>
+          <option>低壓機電工程</option>
+          <option>高壓機電工程</option>
+          <option>管路開挖工程</option>
+          <option>外線自設工程</option>
+          <option>竣工掛表</option>
+          <option>施工驗收</option>
+          <option>點交</option>
+          <option>異常處理</option>
         </select>
 
         <label for="content">施工內容</label>
-        <textarea id="content" placeholder="可直接打字，也可以按語音輸入後開始講話。&#10;例如：今日完成A棟柱位放樣，B棟右側偏心位置需再確認，現場材料已進場..."></textarea>
+        <textarea id="content" placeholder="可直接打字，也可以按語音輸入後開始講話。&#10;例如：今日完成日常巡檢，確認物料進場狀況與施工區域安全，若有異常請補充說明..."></textarea>
 
         <label for="photoInput">現場照片 / 影片</label>
         <div class="photo-uploader">
@@ -890,17 +894,21 @@
           <input id="search" placeholder="搜尋工程名稱、內容、人員、施工階段..." />
           <select id="filterProgress">
             <option value="">全部階段</option>
-            <option>一般紀錄</option>
-            <option>進料</option>
-            <option>放樣</option>
-            <option>基礎</option>
-            <option>鋼構</option>
-            <option>浪板</option>
-            <option>模組</option>
-            <option>機電</option>
-            <option>報竣</option>
-            <option>掛表</option>
-            <option>異常 / 待處理</option>
+            <option>日常巡檢</option>
+            <option>現勘/估價</option>
+            <option>物料進場</option>
+            <option>開挖放樣工程</option>
+            <option>基礎工程</option>
+            <option>支架組立工程</option>
+            <option>模組鋪設工程</option>
+            <option>低壓機電工程</option>
+            <option>高壓機電工程</option>
+            <option>管路開挖工程</option>
+            <option>外線自設工程</option>
+            <option>竣工掛表</option>
+            <option>施工驗收</option>
+            <option>點交</option>
+            <option>異常處理</option>
           </select>
           <button class="secondary" id="exportBtn" type="button">匯出 CSV</button>
           <button class="secondary" id="printBtn" type="button">列印 / PDF</button>
@@ -1166,7 +1174,7 @@ ${right}`;
       $('workers').value = '';
       $('content').value = '';
       $('weather').value = '未填';
-      $('progress').value = '一般紀錄';
+      $('progress').value = '日常巡檢';
       selectedPhotos = [];
       $('photoInput').value = '';
       renderPhotoPreview();
@@ -1261,7 +1269,7 @@ ${right}`;
       const latest = [...sourceLogs].sort((a, b) => new Date(`${b.date}T${b.time || '00:00'}`) - new Date(`${a.date}T${a.time || '00:00'}`))[0];
       $('totalCount').textContent = sourceLogs.length;
       $('todayCount').textContent = sourceLogs.filter(log => log.date === today).length;
-      $('issueCount').textContent = sourceLogs.filter(log => log.progress === '異常 / 待處理').length;
+      $('issueCount').textContent = sourceLogs.filter(log => log.progress === '異常處理').length;
       $('latestDate').textContent = latest ? formatDate(latest.date) : '-';
     }
 
@@ -1599,7 +1607,7 @@ ${right}`;
       const rows = sourceLogs.length ? sourceLogs.map(log => `
         <section class="print-entry">
           <div class="print-entry-head">
-            <strong>${escapeHTML(log.progress || '一般紀錄')}</strong>
+            <strong>${escapeHTML(log.progress || '日常巡檢')}</strong>
             <span>${formatDate(log.date)} ${escapeHTML(log.time || '')}</span>
           </div>
           <div class="print-meta">天氣：${escapeHTML(log.weather || '未填')}　人員 / 工班：${escapeHTML(log.workers || '未填')}</div>
@@ -1702,7 +1710,7 @@ ${right}`;
     }
 
     function getCurrentSite() {
-      return sites.find(site => site.id === currentSiteId) || sites[0] || { id: 'default', name: '未命名案場', location: '未填', status: '施工中', stage: '一般紀錄', latest: '-', issues: 0 };
+      return sites.find(site => site.id === currentSiteId) || sites[0] || { id: 'default', name: '未命名案場', location: '未填', status: '施工中', stage: '日常巡檢', latest: '-', issues: 0 };
     }
 
     function getSiteLogs(site) {
@@ -1725,13 +1733,13 @@ ${right}`;
 
     function getDisplaySiteStage(site) {
       const latestLog = getLatestSiteLog(site);
-      return latestLog?.progress || site?.stage || '一般紀錄';
+      return latestLog?.progress || site?.stage || '日常巡檢';
     }
 
     function getDisplaySiteStatus(site) {
       const latestLog = getLatestSiteLog(site);
-      if (latestLog && latestLog.progress === '掛表') return '已完成';
-      if (latestLog && latestLog.progress === '報竣') return '驗收中';
+      if (latestLog && latestLog.progress === '竣工掛表') return '已完成';
+      if (latestLog && latestLog.progress === '施工驗收') return '驗收中';
       return site?.status || (latestLog ? '施工中' : '待施工');
     }
 
@@ -1772,7 +1780,7 @@ ${right}`;
         const siteLogs = getSiteLogs(site);
         const today = toDateInput(new Date());
         const todayCount = siteLogs.filter(log => log.date === today).length;
-        const issueCount = siteLogs.filter(log => log.progress === '異常 / 待處理').length;
+        const issueCount = siteLogs.filter(log => log.progress === '異常處理').length;
         const latest = getLatestSiteLog(site);
         const latestText = latest ? `${formatDate(latest.date)} ${latest.time || ''}` : (site.latest || '-');
         const currentStage = getDisplaySiteStage(site);
@@ -1849,7 +1857,7 @@ ${right}`;
       const site = getCurrentSite();
       const statusSelect = $('siteStatus');
       if (!site) return;
-      if (progress === '掛表') {
+      if (progress === '竣工掛表') {
         site.status = '已完成';
         if (statusSelect) statusSelect.value = '已完成';
       } else if (statusSelect) {
@@ -1873,7 +1881,7 @@ ${right}`;
         name: cleanName,
         location: '未填位置',
         status: '施工中',
-        stage: '一般紀錄',
+        stage: '日常巡檢',
         latest: '-',
         issues: 0
       };
